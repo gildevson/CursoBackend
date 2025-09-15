@@ -1,0 +1,10 @@
+name = "curso-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-21"
+compatibility_flags = ["nodejs_compat"]   # << ADICIONE ISSO
+
+[vars]
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+[observability]
+logs = { enabled = true }
