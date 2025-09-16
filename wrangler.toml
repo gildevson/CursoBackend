@@ -1,10 +1,7 @@
 name = "curso-backend"
-main = "src/index.ts"
-compatibility_date = "2024-11-21"
-compatibility_flags = ["nodejs_compat"]   # << ADICIONE ISSO
+main = "src/index.ts"   # (ou src/index.ts, se for o seu)
+compatibility_date = "2024-11-12"
 
 [vars]
 ALLOWED_ORIGIN = "http://localhost:5173"
-
-[observability]
-logs = { enabled = true }
+# Em produção: `wrangler secret put DATABASE_URL`

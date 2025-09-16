@@ -6,17 +6,25 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.9.1",
+    "@neondatabase/serverless": "^1.0.1",
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "^0.44.5",
     "hono": "^4.5.7",
+    "itty-router": "^5.0.22",
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240919.0",
+    "@types/bcryptjs": "^2.4.6",
+    "dotenv": "^17.2.2",
+    "drizzle-kit": "^0.31.4",
     "typescript": "^5.6.2",
-    "wrangler": "^3.79.0"
+    "wrangler": "^4.37.0"
   }
 }

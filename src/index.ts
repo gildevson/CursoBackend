@@ -1,22 +1,34 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { auth } from "./routes/auth";
-import { courses } from "./routes/courses";
-import { lessons } from "./routes/lessons";
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import type { Env, CtxVars } from './lib/types';
+import { withDb } from './lib/db';
+import { auth } from './routes/auth';
+import { usersRouter } from './routes/users';
+import dbping from './routes/dbping'; // <-- novo
 
-const app = new Hono<{ Bindings: { ALLOWED_ORIGIN: string } }>();
+const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
-app.use("*", cors({
-  origin: (origin) => origin ?? "*",
-  allowHeaders: ["Content-Type", "Authorization"],
-  allowMethods: ["GET","POST","OPTIONS"]
+// CORS (uma vez só)
+// CORS (uma vez só)
+app.use('*', cors({
+  // (origin, c) => ...
+  origin: (_origin, c) => c.env.ALLOWED_ORIGIN ?? '*',
+  allowMethods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowHeaders: ['Content-Type','Authorization'],
+  credentials: true,
 }));
 
-app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
-app.route("/auth", auth);
-app.route("/courses", courses);
-app.route("/lessons", lessons);
 
-export default {
-  fetch: (req: Request, env: any, ctx: ExecutionContext) => app.fetch(req, env, ctx)
-};
+// Injeta DB no contexto
+app.use('*', withDb);
+
+// Rotas simples
+app.get('/', (c) => c.text('API rodando 🚀'));
+app.get('/health', (c) => c.json({ ok: true, ts: Date.now() }));
+
+// Monta sub-apps
+app.route('/dbping', dbping);   // <-- agora /dbping existe
+app.route('/auth', auth);
+app.route('/users', usersRouter);
+
+export default app;
