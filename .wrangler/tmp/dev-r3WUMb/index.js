@@ -49,10 +49,10 @@ var require_crypto = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-1s6q9l/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-KJ5SyC/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-1s6q9l/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-KJ5SyC/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.ts
@@ -472,7 +472,7 @@ var HonoRequest = class {
     return bodyCache[key2] = raw2[key2]();
   }, "#cachedBody");
   json() {
-    return this.#cachedBody("text").then((text2) => JSON.parse(text2));
+    return this.#cachedBody("text").then((text3) => JSON.parse(text3));
   }
   text() {
     return this.#cachedBody("text");
@@ -700,9 +700,9 @@ var Context = class {
   }
   newResponse = /* @__PURE__ */ __name((...args) => this.#newResponse(...args), "newResponse");
   body = /* @__PURE__ */ __name((data, arg, headers) => this.#newResponse(data, arg, headers), "body");
-  text = /* @__PURE__ */ __name((text2, arg, headers) => {
-    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text2) : this.#newResponse(
-      text2,
+  text = /* @__PURE__ */ __name((text3, arg, headers) => {
+    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text3) : this.#newResponse(
+      text3,
       arg,
       setDefaultContentType(TEXT_PLAIN, headers)
     );
@@ -14865,20 +14865,6 @@ var withDb = /* @__PURE__ */ __name(async (c, next) => {
 // src/routes/auth.ts
 init_modules_watch_stub();
 
-// src/db/index.ts
-init_modules_watch_stub();
-
-// src/db/tables/users.ts
-init_modules_watch_stub();
-var users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-});
-
 // node_modules/bcryptjs/index.js
 init_modules_watch_stub();
 var import_crypto = __toESM(require_crypto(), 1);
@@ -16632,6 +16618,771 @@ var bcryptjs_default = {
   decodeBase64
 };
 
+// src/db/tables/users.ts
+init_modules_watch_stub();
+var users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+// src/db/tables/roles.ts
+init_modules_watch_stub();
+
+// node_modules/drizzle-orm/sqlite-core/columns/blob.js
+init_modules_watch_stub();
+
+// node_modules/drizzle-orm/sqlite-core/columns/common.js
+init_modules_watch_stub();
+
+// node_modules/drizzle-orm/sqlite-core/foreign-keys.js
+init_modules_watch_stub();
+var ForeignKeyBuilder2 = class {
+  static {
+    __name(this, "ForeignKeyBuilder");
+  }
+  static [entityKind] = "SQLiteForeignKeyBuilder";
+  /** @internal */
+  reference;
+  /** @internal */
+  _onUpdate;
+  /** @internal */
+  _onDelete;
+  constructor(config, actions) {
+    this.reference = () => {
+      const { name, columns, foreignColumns } = config();
+      return { name, columns, foreignTable: foreignColumns[0].table, foreignColumns };
+    };
+    if (actions) {
+      this._onUpdate = actions.onUpdate;
+      this._onDelete = actions.onDelete;
+    }
+  }
+  onUpdate(action) {
+    this._onUpdate = action;
+    return this;
+  }
+  onDelete(action) {
+    this._onDelete = action;
+    return this;
+  }
+  /** @internal */
+  build(table) {
+    return new ForeignKey2(table, this);
+  }
+};
+var ForeignKey2 = class {
+  static {
+    __name(this, "ForeignKey");
+  }
+  constructor(table, builder) {
+    this.table = table;
+    this.reference = builder.reference;
+    this.onUpdate = builder._onUpdate;
+    this.onDelete = builder._onDelete;
+  }
+  static [entityKind] = "SQLiteForeignKey";
+  reference;
+  onUpdate;
+  onDelete;
+  getName() {
+    const { name, columns, foreignColumns } = this.reference();
+    const columnNames = columns.map((column) => column.name);
+    const foreignColumnNames = foreignColumns.map((column) => column.name);
+    const chunks = [
+      this.table[TableName],
+      ...columnNames,
+      foreignColumns[0].table[TableName],
+      ...foreignColumnNames
+    ];
+    return name ?? `${chunks.join("_")}_fk`;
+  }
+};
+
+// node_modules/drizzle-orm/sqlite-core/unique-constraint.js
+init_modules_watch_stub();
+function uniqueKeyName2(table, columns) {
+  return `${table[TableName]}_${columns.join("_")}_unique`;
+}
+__name(uniqueKeyName2, "uniqueKeyName");
+var UniqueConstraintBuilder2 = class {
+  static {
+    __name(this, "UniqueConstraintBuilder");
+  }
+  constructor(columns, name) {
+    this.name = name;
+    this.columns = columns;
+  }
+  static [entityKind] = "SQLiteUniqueConstraintBuilder";
+  /** @internal */
+  columns;
+  /** @internal */
+  build(table) {
+    return new UniqueConstraint2(table, this.columns, this.name);
+  }
+};
+var UniqueOnConstraintBuilder2 = class {
+  static {
+    __name(this, "UniqueOnConstraintBuilder");
+  }
+  static [entityKind] = "SQLiteUniqueOnConstraintBuilder";
+  /** @internal */
+  name;
+  constructor(name) {
+    this.name = name;
+  }
+  on(...columns) {
+    return new UniqueConstraintBuilder2(columns, this.name);
+  }
+};
+var UniqueConstraint2 = class {
+  static {
+    __name(this, "UniqueConstraint");
+  }
+  constructor(table, columns, name) {
+    this.table = table;
+    this.columns = columns;
+    this.name = name ?? uniqueKeyName2(this.table, this.columns.map((column) => column.name));
+  }
+  static [entityKind] = "SQLiteUniqueConstraint";
+  columns;
+  name;
+  getName() {
+    return this.name;
+  }
+};
+
+// node_modules/drizzle-orm/sqlite-core/columns/common.js
+var SQLiteColumnBuilder = class extends ColumnBuilder {
+  static {
+    __name(this, "SQLiteColumnBuilder");
+  }
+  static [entityKind] = "SQLiteColumnBuilder";
+  foreignKeyConfigs = [];
+  references(ref, actions = {}) {
+    this.foreignKeyConfigs.push({ ref, actions });
+    return this;
+  }
+  unique(name) {
+    this.config.isUnique = true;
+    this.config.uniqueName = name;
+    return this;
+  }
+  generatedAlwaysAs(as2, config) {
+    this.config.generated = {
+      as: as2,
+      type: "always",
+      mode: config?.mode ?? "virtual"
+    };
+    return this;
+  }
+  /** @internal */
+  buildForeignKeys(column, table) {
+    return this.foreignKeyConfigs.map(({ ref, actions }) => {
+      return ((ref2, actions2) => {
+        const builder = new ForeignKeyBuilder2(() => {
+          const foreignColumn = ref2();
+          return { columns: [column], foreignColumns: [foreignColumn] };
+        });
+        if (actions2.onUpdate) {
+          builder.onUpdate(actions2.onUpdate);
+        }
+        if (actions2.onDelete) {
+          builder.onDelete(actions2.onDelete);
+        }
+        return builder.build(table);
+      })(ref, actions);
+    });
+  }
+};
+var SQLiteColumn = class extends Column {
+  static {
+    __name(this, "SQLiteColumn");
+  }
+  constructor(table, config) {
+    if (!config.uniqueName) {
+      config.uniqueName = uniqueKeyName2(table, [config.name]);
+    }
+    super(table, config);
+    this.table = table;
+  }
+  static [entityKind] = "SQLiteColumn";
+};
+
+// node_modules/drizzle-orm/sqlite-core/columns/blob.js
+var SQLiteBigIntBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteBigIntBuilder");
+  }
+  static [entityKind] = "SQLiteBigIntBuilder";
+  constructor(name) {
+    super(name, "bigint", "SQLiteBigInt");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteBigInt(table, this.config);
+  }
+};
+var SQLiteBigInt = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteBigInt");
+  }
+  static [entityKind] = "SQLiteBigInt";
+  getSQLType() {
+    return "blob";
+  }
+  mapFromDriverValue(value) {
+    if (typeof Buffer !== "undefined" && Buffer.from) {
+      const buf = Buffer.isBuffer(value) ? value : value instanceof ArrayBuffer ? Buffer.from(value) : value.buffer ? Buffer.from(value.buffer, value.byteOffset, value.byteLength) : Buffer.from(value);
+      return BigInt(buf.toString("utf8"));
+    }
+    return BigInt(textDecoder.decode(value));
+  }
+  mapToDriverValue(value) {
+    return Buffer.from(value.toString());
+  }
+};
+var SQLiteBlobJsonBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteBlobJsonBuilder");
+  }
+  static [entityKind] = "SQLiteBlobJsonBuilder";
+  constructor(name) {
+    super(name, "json", "SQLiteBlobJson");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteBlobJson(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteBlobJson = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteBlobJson");
+  }
+  static [entityKind] = "SQLiteBlobJson";
+  getSQLType() {
+    return "blob";
+  }
+  mapFromDriverValue(value) {
+    if (typeof Buffer !== "undefined" && Buffer.from) {
+      const buf = Buffer.isBuffer(value) ? value : value instanceof ArrayBuffer ? Buffer.from(value) : value.buffer ? Buffer.from(value.buffer, value.byteOffset, value.byteLength) : Buffer.from(value);
+      return JSON.parse(buf.toString("utf8"));
+    }
+    return JSON.parse(textDecoder.decode(value));
+  }
+  mapToDriverValue(value) {
+    return Buffer.from(JSON.stringify(value));
+  }
+};
+var SQLiteBlobBufferBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteBlobBufferBuilder");
+  }
+  static [entityKind] = "SQLiteBlobBufferBuilder";
+  constructor(name) {
+    super(name, "buffer", "SQLiteBlobBuffer");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteBlobBuffer(table, this.config);
+  }
+};
+var SQLiteBlobBuffer = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteBlobBuffer");
+  }
+  static [entityKind] = "SQLiteBlobBuffer";
+  mapFromDriverValue(value) {
+    if (Buffer.isBuffer(value)) {
+      return value;
+    }
+    return Buffer.from(value);
+  }
+  getSQLType() {
+    return "blob";
+  }
+};
+function blob(a2, b2) {
+  const { name, config } = getColumnNameAndConfig(a2, b2);
+  if (config?.mode === "json") {
+    return new SQLiteBlobJsonBuilder(name);
+  }
+  if (config?.mode === "bigint") {
+    return new SQLiteBigIntBuilder(name);
+  }
+  return new SQLiteBlobBufferBuilder(name);
+}
+__name(blob, "blob");
+
+// node_modules/drizzle-orm/sqlite-core/columns/custom.js
+init_modules_watch_stub();
+var SQLiteCustomColumnBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteCustomColumnBuilder");
+  }
+  static [entityKind] = "SQLiteCustomColumnBuilder";
+  constructor(name, fieldConfig, customTypeParams) {
+    super(name, "custom", "SQLiteCustomColumn");
+    this.config.fieldConfig = fieldConfig;
+    this.config.customTypeParams = customTypeParams;
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteCustomColumn(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteCustomColumn = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteCustomColumn");
+  }
+  static [entityKind] = "SQLiteCustomColumn";
+  sqlName;
+  mapTo;
+  mapFrom;
+  constructor(table, config) {
+    super(table, config);
+    this.sqlName = config.customTypeParams.dataType(config.fieldConfig);
+    this.mapTo = config.customTypeParams.toDriver;
+    this.mapFrom = config.customTypeParams.fromDriver;
+  }
+  getSQLType() {
+    return this.sqlName;
+  }
+  mapFromDriverValue(value) {
+    return typeof this.mapFrom === "function" ? this.mapFrom(value) : value;
+  }
+  mapToDriverValue(value) {
+    return typeof this.mapTo === "function" ? this.mapTo(value) : value;
+  }
+};
+function customType2(customTypeParams) {
+  return (a2, b2) => {
+    const { name, config } = getColumnNameAndConfig(a2, b2);
+    return new SQLiteCustomColumnBuilder(
+      name,
+      config,
+      customTypeParams
+    );
+  };
+}
+__name(customType2, "customType");
+
+// node_modules/drizzle-orm/sqlite-core/columns/integer.js
+init_modules_watch_stub();
+var SQLiteBaseIntegerBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteBaseIntegerBuilder");
+  }
+  static [entityKind] = "SQLiteBaseIntegerBuilder";
+  constructor(name, dataType, columnType) {
+    super(name, dataType, columnType);
+    this.config.autoIncrement = false;
+  }
+  primaryKey(config) {
+    if (config?.autoIncrement) {
+      this.config.autoIncrement = true;
+    }
+    this.config.hasDefault = true;
+    return super.primaryKey();
+  }
+};
+var SQLiteBaseInteger = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteBaseInteger");
+  }
+  static [entityKind] = "SQLiteBaseInteger";
+  autoIncrement = this.config.autoIncrement;
+  getSQLType() {
+    return "integer";
+  }
+};
+var SQLiteIntegerBuilder = class extends SQLiteBaseIntegerBuilder {
+  static {
+    __name(this, "SQLiteIntegerBuilder");
+  }
+  static [entityKind] = "SQLiteIntegerBuilder";
+  constructor(name) {
+    super(name, "number", "SQLiteInteger");
+  }
+  build(table) {
+    return new SQLiteInteger(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteInteger = class extends SQLiteBaseInteger {
+  static {
+    __name(this, "SQLiteInteger");
+  }
+  static [entityKind] = "SQLiteInteger";
+};
+var SQLiteTimestampBuilder = class extends SQLiteBaseIntegerBuilder {
+  static {
+    __name(this, "SQLiteTimestampBuilder");
+  }
+  static [entityKind] = "SQLiteTimestampBuilder";
+  constructor(name, mode) {
+    super(name, "date", "SQLiteTimestamp");
+    this.config.mode = mode;
+  }
+  /**
+   * @deprecated Use `default()` with your own expression instead.
+   *
+   * Adds `DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer))` to the column, which is the current epoch timestamp in milliseconds.
+   */
+  defaultNow() {
+    return this.default(sql`(cast((julianday('now') - 2440587.5)*86400000 as integer))`);
+  }
+  build(table) {
+    return new SQLiteTimestamp(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteTimestamp = class extends SQLiteBaseInteger {
+  static {
+    __name(this, "SQLiteTimestamp");
+  }
+  static [entityKind] = "SQLiteTimestamp";
+  mode = this.config.mode;
+  mapFromDriverValue(value) {
+    if (this.config.mode === "timestamp") {
+      return new Date(value * 1e3);
+    }
+    return new Date(value);
+  }
+  mapToDriverValue(value) {
+    const unix = value.getTime();
+    if (this.config.mode === "timestamp") {
+      return Math.floor(unix / 1e3);
+    }
+    return unix;
+  }
+};
+var SQLiteBooleanBuilder = class extends SQLiteBaseIntegerBuilder {
+  static {
+    __name(this, "SQLiteBooleanBuilder");
+  }
+  static [entityKind] = "SQLiteBooleanBuilder";
+  constructor(name, mode) {
+    super(name, "boolean", "SQLiteBoolean");
+    this.config.mode = mode;
+  }
+  build(table) {
+    return new SQLiteBoolean(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteBoolean = class extends SQLiteBaseInteger {
+  static {
+    __name(this, "SQLiteBoolean");
+  }
+  static [entityKind] = "SQLiteBoolean";
+  mode = this.config.mode;
+  mapFromDriverValue(value) {
+    return Number(value) === 1;
+  }
+  mapToDriverValue(value) {
+    return value ? 1 : 0;
+  }
+};
+function integer2(a2, b2) {
+  const { name, config } = getColumnNameAndConfig(a2, b2);
+  if (config?.mode === "timestamp" || config?.mode === "timestamp_ms") {
+    return new SQLiteTimestampBuilder(name, config.mode);
+  }
+  if (config?.mode === "boolean") {
+    return new SQLiteBooleanBuilder(name, config.mode);
+  }
+  return new SQLiteIntegerBuilder(name);
+}
+__name(integer2, "integer");
+
+// node_modules/drizzle-orm/sqlite-core/columns/numeric.js
+init_modules_watch_stub();
+var SQLiteNumericBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteNumericBuilder");
+  }
+  static [entityKind] = "SQLiteNumericBuilder";
+  constructor(name) {
+    super(name, "string", "SQLiteNumeric");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteNumeric(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteNumeric = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteNumeric");
+  }
+  static [entityKind] = "SQLiteNumeric";
+  mapFromDriverValue(value) {
+    if (typeof value === "string") return value;
+    return String(value);
+  }
+  getSQLType() {
+    return "numeric";
+  }
+};
+var SQLiteNumericNumberBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteNumericNumberBuilder");
+  }
+  static [entityKind] = "SQLiteNumericNumberBuilder";
+  constructor(name) {
+    super(name, "number", "SQLiteNumericNumber");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteNumericNumber(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteNumericNumber = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteNumericNumber");
+  }
+  static [entityKind] = "SQLiteNumericNumber";
+  mapFromDriverValue(value) {
+    if (typeof value === "number") return value;
+    return Number(value);
+  }
+  mapToDriverValue = String;
+  getSQLType() {
+    return "numeric";
+  }
+};
+var SQLiteNumericBigIntBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteNumericBigIntBuilder");
+  }
+  static [entityKind] = "SQLiteNumericBigIntBuilder";
+  constructor(name) {
+    super(name, "bigint", "SQLiteNumericBigInt");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteNumericBigInt(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteNumericBigInt = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteNumericBigInt");
+  }
+  static [entityKind] = "SQLiteNumericBigInt";
+  mapFromDriverValue = BigInt;
+  mapToDriverValue = String;
+  getSQLType() {
+    return "numeric";
+  }
+};
+function numeric2(a2, b2) {
+  const { name, config } = getColumnNameAndConfig(a2, b2);
+  const mode = config?.mode;
+  return mode === "number" ? new SQLiteNumericNumberBuilder(name) : mode === "bigint" ? new SQLiteNumericBigIntBuilder(name) : new SQLiteNumericBuilder(name);
+}
+__name(numeric2, "numeric");
+
+// node_modules/drizzle-orm/sqlite-core/columns/real.js
+init_modules_watch_stub();
+var SQLiteRealBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteRealBuilder");
+  }
+  static [entityKind] = "SQLiteRealBuilder";
+  constructor(name) {
+    super(name, "number", "SQLiteReal");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteReal(table, this.config);
+  }
+};
+var SQLiteReal = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteReal");
+  }
+  static [entityKind] = "SQLiteReal";
+  getSQLType() {
+    return "real";
+  }
+};
+function real2(name) {
+  return new SQLiteRealBuilder(name ?? "");
+}
+__name(real2, "real");
+
+// node_modules/drizzle-orm/sqlite-core/columns/text.js
+init_modules_watch_stub();
+var SQLiteTextBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteTextBuilder");
+  }
+  static [entityKind] = "SQLiteTextBuilder";
+  constructor(name, config) {
+    super(name, "string", "SQLiteText");
+    this.config.enumValues = config.enum;
+    this.config.length = config.length;
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteText(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteText = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteText");
+  }
+  static [entityKind] = "SQLiteText";
+  enumValues = this.config.enumValues;
+  length = this.config.length;
+  constructor(table, config) {
+    super(table, config);
+  }
+  getSQLType() {
+    return `text${this.config.length ? `(${this.config.length})` : ""}`;
+  }
+};
+var SQLiteTextJsonBuilder = class extends SQLiteColumnBuilder {
+  static {
+    __name(this, "SQLiteTextJsonBuilder");
+  }
+  static [entityKind] = "SQLiteTextJsonBuilder";
+  constructor(name) {
+    super(name, "json", "SQLiteTextJson");
+  }
+  /** @internal */
+  build(table) {
+    return new SQLiteTextJson(
+      table,
+      this.config
+    );
+  }
+};
+var SQLiteTextJson = class extends SQLiteColumn {
+  static {
+    __name(this, "SQLiteTextJson");
+  }
+  static [entityKind] = "SQLiteTextJson";
+  getSQLType() {
+    return "text";
+  }
+  mapFromDriverValue(value) {
+    return JSON.parse(value);
+  }
+  mapToDriverValue(value) {
+    return JSON.stringify(value);
+  }
+};
+function text2(a2, b2 = {}) {
+  const { name, config } = getColumnNameAndConfig(a2, b2);
+  if (config.mode === "json") {
+    return new SQLiteTextJsonBuilder(name);
+  }
+  return new SQLiteTextBuilder(name, config);
+}
+__name(text2, "text");
+
+// node_modules/drizzle-orm/sqlite-core/table.js
+init_modules_watch_stub();
+
+// node_modules/drizzle-orm/sqlite-core/columns/all.js
+init_modules_watch_stub();
+function getSQLiteColumnBuilders() {
+  return {
+    blob,
+    customType: customType2,
+    integer: integer2,
+    numeric: numeric2,
+    real: real2,
+    text: text2
+  };
+}
+__name(getSQLiteColumnBuilders, "getSQLiteColumnBuilders");
+
+// node_modules/drizzle-orm/sqlite-core/table.js
+var InlineForeignKeys2 = Symbol.for("drizzle:SQLiteInlineForeignKeys");
+var SQLiteTable = class extends Table {
+  static {
+    __name(this, "SQLiteTable");
+  }
+  static [entityKind] = "SQLiteTable";
+  /** @internal */
+  static Symbol = Object.assign({}, Table.Symbol, {
+    InlineForeignKeys: InlineForeignKeys2
+  });
+  /** @internal */
+  [Table.Symbol.Columns];
+  /** @internal */
+  [InlineForeignKeys2] = [];
+  /** @internal */
+  [Table.Symbol.ExtraConfigBuilder] = void 0;
+};
+function sqliteTableBase(name, columns, extraConfig, schema, baseName = name) {
+  const rawTable = new SQLiteTable(name, schema, baseName);
+  const parsedColumns = typeof columns === "function" ? columns(getSQLiteColumnBuilders()) : columns;
+  const builtColumns = Object.fromEntries(
+    Object.entries(parsedColumns).map(([name2, colBuilderBase]) => {
+      const colBuilder = colBuilderBase;
+      colBuilder.setName(name2);
+      const column = colBuilder.build(rawTable);
+      rawTable[InlineForeignKeys2].push(...colBuilder.buildForeignKeys(column, rawTable));
+      return [name2, column];
+    })
+  );
+  const table = Object.assign(rawTable, builtColumns);
+  table[Table.Symbol.Columns] = builtColumns;
+  table[Table.Symbol.ExtraConfigColumns] = builtColumns;
+  if (extraConfig) {
+    table[SQLiteTable.Symbol.ExtraConfigBuilder] = extraConfig;
+  }
+  return table;
+}
+__name(sqliteTableBase, "sqliteTableBase");
+var sqliteTable = /* @__PURE__ */ __name((name, columns, extraConfig) => {
+  return sqliteTableBase(name, columns, extraConfig);
+}, "sqliteTable");
+
+// src/db/tables/roles.ts
+var roles = sqliteTable("roles", {
+  id: text2("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text2("name").notNull().unique()
+  // ex.: 'admin', 'gestor', 'usuario'
+});
+
+// src/db/tables/userRoles.ts
+init_modules_watch_stub();
+var userRoles = sqliteTable("user_roles", {
+  userId: text2("user_id").notNull(),
+  roleId: text2("role_id").notNull()
+});
+
 // src/lib/jwt.ts
 init_modules_watch_stub();
 
@@ -18106,30 +18857,55 @@ __name(verifyJwt, "verifyJwt");
 // src/routes/auth.ts
 var auth = new Hono2();
 auth.post("/register", async (c) => {
-  const db = c.var.db;
-  const body = await c.req.json();
-  const name = String(body.name ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
-  if (!name || !email || !password) return c.json({ error: "Dados inv\xE1lidos" }, 400);
-  const [exists2] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (exists2) return c.json({ error: "E-mail j\xE1 usado" }, 409);
-  const hash2 = await bcryptjs_default.hash(password, 10);
-  const [created] = await db.insert(users).values({ name, email, passwordHash: hash2 }).returning({ id: users.id, name: users.name, email: users.email });
-  const token = await signJwt({ sub: created.id, email: created.email, name: created.name }, c.env.JWT_SECRET);
-  return c.json({ token, user: created }, 201);
+  try {
+    const db = c.var.db;
+    const body = await c.req.json();
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    if (!name || !email || !password) {
+      return c.json({ message: "Dados inv\xE1lidos. Informe nome, e-mail e senha." }, 400);
+    }
+    const [exists2] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (exists2) return c.json({ message: "E-mail j\xE1 cadastrado." }, 409);
+    const hash2 = await bcryptjs_default.hash(password, 10);
+    await db.insert(users).values({ name, email, passwordHash: hash2 });
+    const [created] = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.email, email)).limit(1);
+    if (!created) return c.json({ message: "Falha ao persistir cadastro." }, 500);
+    const [roleUser] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "usuario")).limit(1);
+    if (roleUser) await db.insert(userRoles).values({ userId: created.id, roleId: roleUser.id });
+    const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
+    let token = null;
+    if (JWT) token = await signJwt({ sub: created.id, email: created.email, name: created.name, roles: ["usuario"] }, JWT);
+    c.header("Location", `/users/${created.id}`);
+    return c.json({ message: "Cadastro realizado com sucesso.", user: created, token }, 201);
+  } catch (err) {
+    const msg = String(err?.message ?? "").toLowerCase();
+    if (msg.includes("unique") || msg.includes("constraint")) {
+      return c.json({ message: "E-mail j\xE1 cadastrado." }, 409);
+    }
+    console.error("register error:", err);
+    return c.json({ message: "Erro interno ao cadastrar." }, 500);
+  }
 });
 auth.post("/login", async (c) => {
-  const db = c.var.db;
-  const body = await c.req.json();
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
-  const [row] = await db.select({ id: users.id, name: users.name, passwordHash: users.passwordHash, email: users.email }).from(users).where(eq(users.email, email)).limit(1);
-  if (!row) return c.json({ error: "Credenciais inv\xE1lidas" }, 401);
-  const ok = await bcryptjs_default.compare(password, row.passwordHash);
-  if (!ok) return c.json({ error: "Credenciais inv\xE1lidas" }, 401);
-  const token = await signJwt({ sub: row.id, email: row.email, name: row.name }, c.env.JWT_SECRET);
-  return c.json({ token, user: { id: row.id, name: row.name, email: row.email } });
+  try {
+    const db = c.var.db;
+    const body = await c.req.json();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    const [row] = await db.select({ id: users.id, name: users.name, email: users.email, passwordHash: users.passwordHash }).from(users).where(eq(users.email, email)).limit(1);
+    if (!row) return c.json({ message: "Credenciais inv\xE1lidas." }, 401);
+    const ok = await bcryptjs_default.compare(password, row.passwordHash);
+    if (!ok) return c.json({ message: "Credenciais inv\xE1lidas." }, 401);
+    const rolesArr = ["usuario"];
+    const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
+    const token = JWT ? await signJwt({ sub: row.id, email: row.email, name: row.name, roles: rolesArr }, JWT) : null;
+    return c.json({ message: "Login realizado com sucesso.", user: { id: row.id, name: row.name, email: row.email }, token });
+  } catch (err) {
+    console.error("login error:", err);
+    return c.json({ message: "Erro interno ao autenticar." }, 500);
+  }
 });
 
 // src/routes/users.ts
@@ -18137,24 +18913,50 @@ init_modules_watch_stub();
 
 // src/lib/auth.ts
 init_modules_watch_stub();
-var requireAuth = /* @__PURE__ */ __name(async (c, next) => {
-  const auth2 = c.req.header("authorization") ?? "";
-  const token = auth2.startsWith("Bearer ") ? auth2.slice(7) : "";
-  if (!token) return c.json({ error: "Unauthorized" }, 401);
-  try {
-    const p2 = await verifyJwt(token, c.env.JWT_SECRET);
-    c.set("auth", { userId: String(p2.sub), email: String(p2.email), name: p2.name ? String(p2.name) : void 0 });
+function requireAuth() {
+  return async (c, next) => {
+    const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
+    if (!JWT) return c.json({ message: "Configura\xE7\xE3o JWT ausente." }, 500);
+    const auth2 = c.req.header("Authorization") || "";
+    const token = auth2.startsWith("Bearer ") ? auth2.slice(7) : null;
+    if (!token) return c.json({ message: "N\xE3o autenticado." }, 401);
+    try {
+      const payload = verifyJwt(token, JWT);
+      c.set("auth", payload);
+      await next();
+    } catch {
+      return c.json({ message: "Token inv\xE1lido ou expirado." }, 401);
+    }
+  };
+}
+__name(requireAuth, "requireAuth");
+function requireRole(...allowed) {
+  return async (c, next) => {
+    const auth2 = c.get("auth");
+    const roles2 = auth2?.roles ?? [];
+    if (!roles2.some((r) => allowed.includes(r))) {
+      return c.json({ message: "Acesso negado (role)." }, 403);
+    }
     await next();
-  } catch {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-}, "requireAuth");
+  };
+}
+__name(requireRole, "requireRole");
 
 // src/routes/users.ts
 var usersRouter = new Hono2();
-usersRouter.use("*", requireAuth);
-usersRouter.get("/me", (c) => {
-  return c.json({ me: c.var.auth });
+usersRouter.use("*", requireAuth());
+usersRouter.get("/", requireRole("admin"), async (c) => {
+  const db = c.var.db;
+  const q = (c.req.query("q") ?? "").trim();
+  const query = db.select({ id: users.id, name: users.name, email: users.email }).from(users);
+  const rows = q ? await query.where(like(users.name, `%${q}%`)) : await query;
+  return c.json(rows);
+});
+usersRouter.delete("/:id", requireRole("admin"), async (c) => {
+  const db = c.var.db;
+  const id = c.req.param("id");
+  await db.delete(users).where(eq(users.id, id));
+  return c.body(null, 204);
 });
 
 // src/routes/dbping.ts
@@ -18170,12 +18972,18 @@ var dbping_default = dbping;
 
 // src/index.ts
 var app = new Hono2();
+var DEFAULT_ORIGINS = ["http://localhost:3000", "http://localhost:5173"];
 app.use("*", cors({
-  // (origin, c) => ...
-  origin: /* @__PURE__ */ __name((_origin, c) => c.env.ALLOWED_ORIGIN ?? "*", "origin"),
+  origin: /* @__PURE__ */ __name((origin, c) => {
+    const envOrigins = (c.env.ALLOWED_ORIGIN ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const allowlist = envOrigins.length ? envOrigins : DEFAULT_ORIGINS;
+    if (origin && allowlist.includes(origin)) return origin;
+    return "";
+  }, "origin"),
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  credentials: true,
+  maxAge: 86400
 }));
 app.use("*", withDb);
 app.get("/", (c) => c.text("API rodando \u{1F680}"));
@@ -18183,6 +18991,7 @@ app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
 app.route("/dbping", dbping_default);
 app.route("/auth", auth);
 app.route("/users", usersRouter);
+app.notFound((c) => c.json({ message: "Rota n\xE3o encontrada" }, 404));
 var src_default = app;
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
@@ -18228,7 +19037,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-1s6q9l/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-KJ5SyC/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -18261,7 +19070,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-1s6q9l/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-KJ5SyC/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
