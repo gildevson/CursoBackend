@@ -12,25 +12,15 @@ const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 const DEFAULT_ORIGINS = ['http://localhost:3000', 'http://localhost:5173'];
 
 // CORS
-app.use('*', cors({
-  origin: (origin, c) => {
-    const envOrigins = (c.env.ALLOWED_ORIGIN ?? '')
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-    const allowlist = envOrigins.length ? envOrigins : DEFAULT_ORIGINS;
-
-    // quando credentials = true, não pode "*"
-    if (origin && allowlist.includes(origin)) return origin;
-    // opcional: bloquear origens não listadas
-    return ''; // sem header → browser bloqueia
-  },
-  allowMethods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowHeaders: ['Content-Type','Authorization'],
-  credentials: true,
-  maxAge: 86400,
-}));
-
+app.use(
+  '*',
+  cors({
+    origin: 'http://localhost:5174', // ⛳ ou '*', mas cuidado em produção
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // se estiver usando cookies
+  })
+);
 // injeta DB no contexto (precisa fazer c.set('db', db) lá dentro)
 app.use('*', withDb);
 

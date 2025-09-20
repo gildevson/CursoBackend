@@ -1,6 +1,8 @@
 name = "curso-backend"
-main = "src/index.ts"   # (ou src/index.ts, se for o seu)
+main = "src/index.ts"
 compatibility_date = "2024-11-12"
+
+compatibility_flags = ["nodejs_compat"]  # ✅ Adicione esta linha
 
 [vars]
 ALLOWED_ORIGIN = "http://localhost:5173"
