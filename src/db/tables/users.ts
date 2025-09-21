@@ -7,4 +7,5 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }), 
 });

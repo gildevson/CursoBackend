@@ -1,0 +1,27 @@
+ALLOWED_ORIGIN=http://localhost:5173
+
+# Use a URL SEM pooler para o Worker (neon-http)
+# (no modal do Neon, DESLIGUE "Connection pooling" para copiar esta)
+DATABASE_URL=postgresql://neondb_owner:npg_TsvaPlu1qGi2@ep-dawn-sea-acy04228-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+# Use a URL COM pooler para migrações (Node/drizzle-kit via TCP)
+# (no modal do Neon, LIGUE "Connection pooling" para copiar esta)
+MIGRATION_URL=postgresql://neondb_owner:npg_TsvaPlu1qGi2@ep-dawn-sea-acy04228-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+
+# SMTP (Gmail via App Password)
+# =========================
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=gilsonfonseca3000@gmail.com
+SMTP_PASS=uxovrzzxywlkbqfm
+# se ainda não tem domínio próprio, use o próprio Gmail como remetente
+SMTP_FROM="LiveWork Suporte <gilsonfonseca3000@gmail.com>"
+
+# =========================
+# JWT / Cripto
+# =========================
+# gerei uma chave aleatória forte; pode trocar se quiser
+JWT_SECRET=8b3c0f1c3e7f4d2b9a2f0c6d1e5a7f3c0b8d6a4e2f1c9b7a5d3f1e7c9a2b5d
+

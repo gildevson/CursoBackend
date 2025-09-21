@@ -1,39 +1,57 @@
+// src/index.ts
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env, CtxVars } from './lib/types';
 import { withDb } from './lib/db';
+import { passwordResetRoutes } from './routes/passwordReset';
+
+
+// 👉 Se o seu ./routes/auth já expõe login + forgot + reset:
 import { auth } from './routes/auth';
+
+// 👉 Seu router de usuários:
 import { usersRouter } from './routes/users';
+
+// Ping ao banco
 import dbping from './routes/dbping';
 
 const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
-// Allowlist de origens (ajuste conforme seu ambiente)
-const DEFAULT_ORIGINS = ['http://localhost:3000', 'http://localhost:5173'];
-
-// CORS
 app.use(
   '*',
   cors({
-    origin: 'http://localhost:5174', // ⛳ ou '*', mas cuidado em produção
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-    credentials: true, // se estiver usando cookies
+    origin: (origin) => {
+      const allow = new Set([
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+      ]);
+      if (!origin) return 'http://localhost:5173'; // fallback dev
+      return allow.has(origin) ? origin : ''; // vazio = bloqueia
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposeHeaders: ['Content-Type', 'Content-Length'],
+    credentials: true,
+    maxAge: 86400,
   })
 );
-// injeta DB no contexto (precisa fazer c.set('db', db) lá dentro)
+
+// injeta db na req
 app.use('*', withDb);
 
 // rotas básicas
 app.get('/', (c) => c.text('API rodando 🚀'));
 app.get('/health', (c) => c.json({ ok: true, ts: Date.now() }));
 
-// sub-apps
+// sub-rotas
 app.route('/dbping', dbping);
-app.route('/auth', auth);
+app.route('/auth', auth);          // -> /auth/login, /auth/forgot-password, /auth/reset-password
 app.route('/users', usersRouter);
+app.route('/auth', passwordResetRoutes);  // 👈 agora /auth/forgot-password e /auth/reset-password existem
 
-// 404 padrão
+
+// 404
 app.notFound((c) => c.json({ message: 'Rota não encontrada' }, 404));
 
 export default app;

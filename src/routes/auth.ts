@@ -1,13 +1,24 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, gt, isNull, ne, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import dayjs from "dayjs";
+import { z } from "zod";
+
 import { users } from "../db/tables/users";
 import { roles } from "../db/tables/roles";
 import { userRoles } from "../db/tables/userRoles";
+import { passwordResetTokens } from "../db/tables/passwordResetTokens"; // << sua tabela de tokens
+import { sendResetEmail } from "../lib/mail";                           // << sua função de e-mail
 import { signJwt } from "../lib/jwt";
 import type { Env, CtxVars } from "../lib/types";
+import { requireAuth } from "../mw/requireAuth";                        // << opcional p/ change-password
 
 export const auth = new Hono<{ Bindings: Env; Variables: CtxVars }>();
+
+/* ====================== */
+/*     REGISTRO / LOGIN   */
+/* ====================== */
 
 auth.post("/register", async (c) => {
   try {
@@ -27,7 +38,6 @@ auth.post("/register", async (c) => {
     const hash = await bcrypt.hash(password, 10);
     await db.insert(users).values({ name, email, passwordHash: hash });
 
-    // buscar criado
     const [created] = await db
       .select({ id: users.id, name: users.name, email: users.email })
       .from(users)
@@ -35,11 +45,9 @@ auth.post("/register", async (c) => {
       .limit(1);
     if (!created) return c.json({ message: "Falha ao persistir cadastro." }, 500);
 
-    // atribui role padrão "usuario" (crie na seed)
     const [roleUser] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "usuario")).limit(1);
     if (roleUser) await db.insert(userRoles).values({ userId: created.id, roleId: roleUser.id });
 
-    // gera token (se houver segredo)
     const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
     let token: string | null = null;
     if (JWT) token = await signJwt({ sub: created.id, email: created.email, name: created.name, roles: ["usuario"] }, JWT);
@@ -71,9 +79,8 @@ auth.post("/login", async (c) => {
 
     const ok = await bcrypt.compare(password, row.passwordHash);
     if (!ok) return c.json({ message: "Credenciais inválidas." }, 401);
-
-    // carrega roles do usuário (simplificado)
-    const rolesArr = ["usuario"]; // você pode ler de userRoles
+    
+    const rolesArr = ["usuario"]; // TODO: carregar de userRoles
 
     const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
     const token = JWT
@@ -85,4 +92,133 @@ auth.post("/login", async (c) => {
     console.error("login error:", err);
     return c.json({ message: "Erro interno ao autenticar." }, 500);
   }
+});
+
+/* ====================== */
+/*  ESQUECI / REDEFINIR   */
+/* ====================== */
+
+/** POST /auth/forgot-password  { email } */
+auth.post("/forgot-password", async (c) => {
+  const db = c.var.db;
+  const body = await c.req.json();
+  const parsed = z.object({ email: z.string().email() }).safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos" }, 400);
+  const email = parsed.data.email.toLowerCase();
+
+  // busca usuário (case-insensitive)
+  const [u] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(sql`lower(${users.email})`, email))
+    .limit(1);
+
+  if (u) {
+    // gera token (guarda o hash) e envia e-mail
+    const tokenPlain = crypto.randomBytes(32).toString("hex");
+    const tokenHash  = await bcrypt.hash(tokenPlain, 10);
+    const expiresAt  = dayjs().add(1, "hour").toDate();
+
+    await db.insert(passwordResetTokens).values({
+      userId: u.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    const base = c.env?.FRONTEND_URL ?? process.env.FRONTEND_URL ?? "http://localhost:5173";
+    const resetUrl = `${base}/reset-password?token=${tokenPlain}&uid=${u.id}`;
+
+    try { await sendResetEmail(u.email, resetUrl); }
+    catch (e) { console.error("email error", e); /* não vaza info */ }
+  }
+
+  return c.json({ ok: true, message: "Se existir uma conta para este e-mail, enviaremos instruções." });
+});
+
+/** POST /auth/reset-password  { uid, token, newPassword } */
+auth.post("/reset-password", async (c) => {
+  const db = c.var.db;
+  const body = await c.req.json();
+  const parsed = z.object({
+    uid: z.string().uuid(),
+    token: z.string().min(32),
+    newPassword: z.string().min(8).max(128),
+  }).safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos" }, 400);
+
+  const { uid, token, newPassword } = parsed.data;
+
+  // procura tokens válidos (não usados e não expirados), mais novos primeiro
+  const validTokens = await db
+    .select({ id: passwordResetTokens.id, tokenHash: passwordResetTokens.tokenHash })
+    .from(passwordResetTokens)
+    .where(and(
+      eq(passwordResetTokens.userId, uid),
+      isNull(passwordResetTokens.usedAt),
+      gt(passwordResetTokens.expiresAt, new Date())
+    ))
+    .orderBy(desc(passwordResetTokens.createdAt))
+    .limit(5);
+
+  let matched: string | null = null;
+  for (const t of validTokens) {
+    if (await bcrypt.compare(token, t.tokenHash)) { matched = t.id; break; }
+  }
+  if (!matched) return c.json({ error: "Token inválido ou expirado" }, 400);
+
+  // troca senha
+  const passHash = await bcrypt.hash(newPassword, 10);
+  await db.update(users)
+    .set({ passwordHash: passHash, passwordChangedAt: new Date() })
+    .where(eq(users.id, uid));
+
+  // marca esse token como usado + invalida pendentes
+  await db.update(passwordResetTokens).set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.id, matched));
+  await db.update(passwordResetTokens).set({ usedAt: new Date() })
+    .where(and(
+      eq(passwordResetTokens.userId, uid),
+      ne(passwordResetTokens.id, matched),
+      isNull(passwordResetTokens.usedAt)
+    ));
+
+  return c.json({ ok: true, message: "Senha alterada com sucesso." });
+});
+
+/* ====================== */
+/*  TROCAR LOGADO (OPC)   */
+/* ====================== */
+
+/** POST /auth/change-password  { currentPassword, newPassword }  (requer Bearer) */
+auth.post("/change-password", requireAuth(), async (c) => {
+  const db = c.var.db;
+  const body = await c.req.json();
+  const parsed = z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8).max(128),
+  }).safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos" }, 400);
+
+  const { currentPassword, newPassword } = parsed.data;
+  const { userId } = c.get("auth") as { userId: string };
+
+  const [row] = await db
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!row) return c.json({ error: "Usuário não encontrado" }, 404);
+
+  const ok = await bcrypt.compare(currentPassword, row.passwordHash);
+  if (!ok) return c.json({ error: "Senha atual incorreta" }, 400);
+
+  const same = await bcrypt.compare(newPassword, row.passwordHash);
+  if (same) return c.json({ error: "A nova senha não pode ser igual à atual" }, 400);
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await db.update(users)
+    .set({ passwordHash: newHash, passwordChangedAt: new Date() })
+    .where(eq(users.id, userId));
+
+  return c.json({ ok: true, message: "Senha alterada com sucesso." });
 });

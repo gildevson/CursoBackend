@@ -1,0 +1,117 @@
+Pensou por 7s
+
+Beleza—agora o backend está certo; o erro é só de envio:
+
+401 validation_error — API key is invalid
+
+Isso acontece porque SMTP (Gmail) ≠ API HTTP (Resend).
+Cloudflare Workers não conseguem abrir conexão TCP de SMTP, então App Password do Gmail não serve aqui. No Worker você precisa usar provedor HTTP (Resend, MailChannels, etc.) ou mover o envio SMTP para um serviço Node fora do Worker.
+
+A seguir deixo 3 caminhos. O mais simples é #1.
+
+1) Resend (HTTP API no Worker) — caminho mais simples
+O que causa o 401
+
+RESEND_API_KEY está errado (colocou o App Password do Gmail ali por engano).
+
+EMAIL_FROM não é de domínio verificado no Resend.
+
+Correção rápida (teste imediato)
+
+Crie uma API key no painel do Resend e coloque no .dev.vars:
+
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
+EMAIL_FROM="LiveWork <onboarding@resend.dev>"   # para teste imediato
+APP_NAME=LiveWork
+
+
+onboarding@resend.dev funciona sem verificar domínio, só para teste. Depois troque para no-reply@SEU-DOMINIO.com e verifique o domínio no Resend (SPF/DKIM).
+
+Reinicie o wrangler:
+
+npm run dev
+
+
+Garanta que você está chamando com c.env (e não process.env):
+
+await sendResetEmail(c.env, email, resetUrl);
+
+
+Se com onboarding@resend.dev parar o 401, então sua API key estava certa e o problema era o remetente não verificado. Depois:
+
+Verifique seu domínio no Resend (adicione os registros SPF/DKIM).
+
+Troque EMAIL_FROM para algo como LiveWork <no-reply@seudominio.com>.
+
+Dica: não use @gmail.com em EMAIL_FROM com Resend — geralmente falha ou entrega mal.
+
+2) MailChannels (também HTTP, sem API key)
+
+Funciona bem em Workers. Exemplo plug-and-play:
+
+// src/lib/mail.ts
+export async function sendWithMailchannels(to: string, fromEmail: string, subject: string, html: string) {
+  const res = await fetch('https://api.mailchannels.net/tx/v1/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: 'LiveWork Suporte' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
+  });
+  if (!res.ok) throw new Error(`MailChannels error: ${await res.text()}`);
+}
+
+
+Ideal usar domínio próprio com SPF adequado para boa entregabilidade.
+
+3) Se quiser SMTP Gmail, precisa sair do Worker
+
+Workers não falam SMTP. Duas opções comuns:
+
+Criar um microserviço Node (Express) numa VM/Render/Railway com nodemailer e seu App Password Gmail. O Worker chama esse serviço por HTTP.
+
+Usar Cloudflare Queues + um consumer Node fora do Worker para enviar por SMTP.
+
+Exemplo super minimal (fora do Worker):
+
+// server.js (Node fora do Worker)
+import express from 'express';
+import nodemailer from 'nodemailer';
+
+const app = express();
+app.use(express.json());
+
+const transport = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  auth: { user: 'seu@gmail.com', pass: 'app_password' },
+});
+
+app.post('/send-reset', async (req, res) => {
+  const { to, subject, html } = req.body;
+  await transport.sendMail({ from: 'LiveWork <seu@gmail.com>', to, subject, html });
+  res.json({ ok: true });
+});
+
+app.listen(3000);
+
+
+E no Worker você só faz fetch('https://seu-servico/send-reset', {...}).
+
+Checagens rápidas (para o que você tem agora)
+
+No .dev.vars, garanta:
+
+RESEND_API_KEY=re_xxx
+EMAIL_FROM="LiveWork <onboarding@resend.dev>"   # teste
+
+
+No sendResetEmail, está recebendo env e usando env.RESEND_API_KEY/env.EMAIL_FROM.
+
+Reinicie o wrangler após editar .dev.vars.
+
+Se quiser, me diga o domínio que pretende usar como remetente que eu já te passo os registros SPF/DKIM típicos do Resend para você colar no DNS, e te mando o mail.ts final com fallback: usa EMAIL_FROM de domínio verificado e, se estiver em dev, usa onboarding@resend.dev.

@@ -1,10 +1,16 @@
+// src/lib/types.ts (exemplo)
 export type Env = {
+  ALLOWED_ORIGIN: string;
   DATABASE_URL: string;
-  JWT_SECRET: string;
-  ALLOWED_ORIGIN?: string;
-};
 
-export type CtxVars = {
-  db: any; // drizzle instance (pode tipar fino depois)
-  auth?: { userId: string; email: string; name?: string };
+  // Email/Resend
+  RESEND_API_KEY: string;
+  EMAIL_FROM: string;
+  APP_NAME?: string;
+
+  // (se você usa isso em forgot-password)
+  FRONTEND_URL?: string;
+
+  // JWT etc.
+  JWT_SECRET: string;
 };
