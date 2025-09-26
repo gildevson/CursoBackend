@@ -1,8 +1,8 @@
 import type { MiddlewareHandler } from 'hono';
-import type { Env, CtxVars } from './types';
+import type { Env } from '../lib/types';
 import { makeDb } from '../db/client';
 
-// injeta Drizzle na request em c.var.db
+
 export const withDb: MiddlewareHandler<{ Bindings: Env; Variables: CtxVars }> = async (c, next) => {
   if (!c.var.db) c.set('db', makeDb(c.env));
   await next();

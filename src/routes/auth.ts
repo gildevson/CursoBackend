@@ -8,11 +8,11 @@ import { z } from "zod";
 import { users } from "../db/tables/users";
 import { roles } from "../db/tables/roles";
 import { userRoles } from "../db/tables/userRoles";
-import { passwordResetTokens } from "../db/tables/passwordResetTokens"; // << sua tabela de tokens
-import { sendResetEmail } from "../lib/mail";                           // << sua função de e-mail
+import { passwordResetTokens } from "../db/tables/passwordResetTokens";
+import { sendResetEmail } from "../lib/mail";
 import { signJwt } from "../lib/jwt";
 import type { Env, CtxVars } from "../lib/types";
-import { requireAuth } from "../mw/requireAuth";                        // << opcional p/ change-password
+import { requireAuth } from "../mw/requireAuth";
 
 export const auth = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
@@ -106,7 +106,6 @@ auth.post("/forgot-password", async (c) => {
   if (!parsed.success) return c.json({ error: "Dados inválidos" }, 400);
   const email = parsed.data.email.toLowerCase();
 
-  // busca usuário (case-insensitive)
   const [u] = await db
     .select({ id: users.id, email: users.email })
     .from(users)
@@ -114,7 +113,6 @@ auth.post("/forgot-password", async (c) => {
     .limit(1);
 
   if (u) {
-    // gera token (guarda o hash) e envia e-mail
     const tokenPlain = crypto.randomBytes(32).toString("hex");
     const tokenHash  = await bcrypt.hash(tokenPlain, 10);
     const expiresAt  = dayjs().add(1, "hour").toDate();
@@ -128,8 +126,12 @@ auth.post("/forgot-password", async (c) => {
     const base = c.env?.FRONTEND_URL ?? process.env.FRONTEND_URL ?? "http://localhost:5173";
     const resetUrl = `${base}/reset-password?token=${tokenPlain}&uid=${u.id}`;
 
-    try { await sendResetEmail(u.email, resetUrl); }
-    catch (e) { console.error("email error", e); /* não vaza info */ }
+    try { 
+      // ✅ Passando o c.env
+      await sendResetEmail(u.email, resetUrl, c.env); 
+    } catch (e) { 
+      console.error("email error", e); 
+    }
   }
 
   return c.json({ ok: true, message: "Se existir uma conta para este e-mail, enviaremos instruções." });
@@ -148,7 +150,6 @@ auth.post("/reset-password", async (c) => {
 
   const { uid, token, newPassword } = parsed.data;
 
-  // procura tokens válidos (não usados e não expirados), mais novos primeiro
   const validTokens = await db
     .select({ id: passwordResetTokens.id, tokenHash: passwordResetTokens.tokenHash })
     .from(passwordResetTokens)
@@ -166,13 +167,11 @@ auth.post("/reset-password", async (c) => {
   }
   if (!matched) return c.json({ error: "Token inválido ou expirado" }, 400);
 
-  // troca senha
   const passHash = await bcrypt.hash(newPassword, 10);
   await db.update(users)
     .set({ passwordHash: passHash, passwordChangedAt: new Date() })
     .where(eq(users.id, uid));
 
-  // marca esse token como usado + invalida pendentes
   await db.update(passwordResetTokens).set({ usedAt: new Date() })
     .where(eq(passwordResetTokens.id, matched));
   await db.update(passwordResetTokens).set({ usedAt: new Date() })
@@ -189,7 +188,6 @@ auth.post("/reset-password", async (c) => {
 /*  TROCAR LOGADO (OPC)   */
 /* ====================== */
 
-/** POST /auth/change-password  { currentPassword, newPassword }  (requer Bearer) */
 auth.post("/change-password", requireAuth(), async (c) => {
   const db = c.var.db;
   const body = await c.req.json();

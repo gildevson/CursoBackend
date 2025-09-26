@@ -3,20 +3,16 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env, CtxVars } from './lib/types';
 import { withDb } from './lib/db';
-import { passwordResetRoutes } from './routes/passwordReset';
 
-
-// 👉 Se o seu ./routes/auth já expõe login + forgot + reset:
+// Rotas
 import { auth } from './routes/auth';
-
-// 👉 Seu router de usuários:
 import { usersRouter } from './routes/users';
-
-// Ping ao banco
+import { passwordResetRoutes } from './routes/passwordReset';
 import dbping from './routes/dbping';
 
 const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
+// Middleware de CORS
 app.use(
   '*',
   cors({
@@ -37,19 +33,18 @@ app.use(
   })
 );
 
-// injeta db na req
+// Injeta db na req
 app.use('*', withDb);
 
-// rotas básicas
+// Rotas básicas
 app.get('/', (c) => c.text('API rodando 🚀'));
 app.get('/health', (c) => c.json({ ok: true, ts: Date.now() }));
 
-// sub-rotas
+// Sub-rotas
 app.route('/dbping', dbping);
-app.route('/auth', auth);          // -> /auth/login, /auth/forgot-password, /auth/reset-password
+app.route('/auth', auth);                  // -> /auth/login
 app.route('/users', usersRouter);
-app.route('/auth', passwordResetRoutes);  // 👈 agora /auth/forgot-password e /auth/reset-password existem
-
+app.route('/password-reset', passwordResetRoutes); // -> /password-reset/request e /password-reset/confirm
 
 // 404
 app.notFound((c) => c.json({ message: 'Rota não encontrada' }, 404));

@@ -1,32 +1,46 @@
-// src/lib/mail.ts
-export type MailEnv = {
-  RESEND_API_KEY: string;
-  EMAIL_FROM: string;
-  APP_NAME?: string;
-};
+import type { Env } from './types';
 
-export async function sendResetEmail(env: MailEnv, to: string, resetUrl: string) {
-  const app = env.APP_NAME ?? 'Aplicativo';
-  const html = `
-    <p>Olá,</p>
-    <p>Recebemos uma solicitação para redefinir a sua senha no <b>${app}</b>.</p>
-    <p><a href="${resetUrl}">${resetUrl}</a> (válido por 1 hora)</p>
-    <p>Se você não solicitou, ignore este e-mail.</p>
-  `;
+export async function sendResetEmail(
+  to: string,
+  resetUrl: string,
+  env: Env
+) {
+  const apiKey = env.RESEND_API_KEY;
+  const from   = env.EMAIL_FROM || 'no-reply@example.com';
+  const app    = env.APP_NAME || 'Aplicativo';
 
-  const resp = await fetch('https://api.resend.com/emails', {
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY não configurada');
+  }
+
+  console.log(">> RESEND_API_KEY carregada:", apiKey?.slice(0, 8));
+  console.log(">> EMAIL_FROM usado:", from);
+
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: env.EMAIL_FROM, // domínio verificado no Resend
+      from,
       to,
-      subject: `Redefinição de senha — ${app}`,
-      html,
+      subject: `Redefinição de senha - ${app}`,
+      html: `
+        <p>Você solicitou a redefinição de senha.</p>
+        <p>Clique no link abaixo para continuar:</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+      `,
     }),
   });
 
-  if (!resp.ok) throw new Error(`Falha ao enviar e-mail: ${await resp.text()}`);
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    console.error('Erro Resend (status):', res.status);
+    console.error('Erro Resend (json):', json);
+    throw new Error('Falha no envio do e-mail');
+  }
+
+  console.log("✅ Email enviado com sucesso:", json);
 }
