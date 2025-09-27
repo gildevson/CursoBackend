@@ -7,7 +7,6 @@ if (!url) throw new Error('MIGRATION_URL/DATABASE_URL não definida');
 
 export default defineConfig({
   dialect: 'postgresql',
-  driver: 'pg', // 👈 OBRIGATÓRIO para migrar via TCP
   dbCredentials: { url },
   schema: ['./src/db/tables/**/*.ts'],
   out: './drizzle',

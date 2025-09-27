@@ -1,5 +1,7 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
-export const roles = sqliteTable("roles", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+// roles.ts
+import { pgTable, uuid, text } from "drizzle-orm/pg-core";
+
+export const roles = pgTable("roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(), // ex.: 'admin', 'gestor', 'usuario'
 });
