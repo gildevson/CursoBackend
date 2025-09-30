@@ -71,28 +71,60 @@ auth.post("/login", async (c) => {
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
 
+    // 🔎 Busca usuário pelo email
     const [row] = await db
-      .select({ id: users.id, name: users.name, email: users.email, passwordHash: users.passwordHash })
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        passwordHash: users.passwordHash,
+      })
       .from(users)
-      .where(eq(users.email, email)).limit(1);
+      .where(eq(users.email, email))
+      .limit(1);
+
     if (!row) return c.json({ message: "Credenciais inválidas." }, 401);
 
+    // 🔑 Valida senha
     const ok = await bcrypt.compare(password, row.passwordHash);
     if (!ok) return c.json({ message: "Credenciais inválidas." }, 401);
-    
-    const rolesArr = ["usuario"]; // TODO: carregar de userRoles
 
+    // 🔑 Carregar roles do usuário
+    const roleRows = await db
+      .select({ name: roles.name })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, row.id));
+
+    const rolesArr = roleRows.map(r => r.name); // ex.: ["usuario"], ["admin"]
+
+    // 🔑 Gera JWT com roles
     const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
     const token = JWT
-      ? await signJwt({ sub: row.id, email: row.email, name: row.name, roles: rolesArr }, JWT)
+      ? await signJwt(
+          { sub: row.id, email: row.email, name: row.name, roles: rolesArr },
+          JWT
+        )
       : null;
 
-    return c.json({ message: "Login realizado com sucesso.", user: { id: row.id, name: row.name, email: row.email }, token });
+    return c.json({
+      message: "Login realizado com sucesso.",
+      user: {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        roles: rolesArr,
+      },
+      token,
+    });
   } catch (err) {
     console.error("login error:", err);
     return c.json({ message: "Erro interno ao autenticar." }, 500);
   }
 });
+
+
+
 
 /* ====================== */
 /*  ESQUECI / REDEFINIR   */
