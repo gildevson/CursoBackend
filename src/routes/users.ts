@@ -81,6 +81,12 @@ usersRouter.delete('/:id', requireRole('admin'), async (c) => {
   try {
     const db = c.var.db;
     const id = c.req.param('id');
+    const currentUserId = c.var.userId; // <-- vem do token
+
+    // 🚫 não permitir que o usuário delete a si mesmo
+    if (id === currentUserId) {
+      return c.json({ error: 'Você não pode excluir a si mesmo.' }, 403);
+    }
 
     const deleted = await db.delete(users).where(eq(users.id, id));
     if (deleted.rowCount === 0) {
@@ -93,5 +99,4 @@ usersRouter.delete('/:id', requireRole('admin'), async (c) => {
     return c.json({ error: 'Falha ao excluir usuário' }, 500);
   }
 });
-
 export default usersRouter;
