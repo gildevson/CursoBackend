@@ -2,30 +2,56 @@
 import { Hono } from 'hono';
 import { requireAuth, requireRole } from '../lib/auth';
 import { users } from '../db/tables/users';
-import { eq, like } from 'drizzle-orm';
+import { eq, like, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import type { Env, CtxVars } from '../lib/types';
 
 export const usersRouter = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
 // 🔒 todas exigem login
-usersRouter.use('*', requireAuth());
-
-/* ======================
-   LISTAR (admin)
+usersRouter.use('*', requireAuth());/*/* ======================
+   LISTAR (admin) com paginação segura
 ====================== */
 usersRouter.get('/', requireRole('admin'), async (c) => {
   try {
     const db = c.var.db;
     const q = (c.req.query('q') ?? '').trim();
 
-    const query = db
-      .select({ id: users.id, name: users.name, email: users.email })
+    // paginação segura
+    const rawPage = parseInt(c.req.query('page') ?? '1', 10);
+    const limit = parseInt(c.req.query('limit') ?? '12', 10);
+
+    // total de registros
+    const totalResult = await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(users);
 
-    const rows = q
-      ? await query.where(like(users.name, `%${q}%`))
-      : await query;
+    const total = totalResult[0]?.count ?? 0;
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+
+    // força o page a ficar dentro do intervalo [1, totalPages]
+    const page = Math.min(Math.max(rawPage, 1), totalPages);
+    const offset = (page - 1) * limit;
+
+    // consulta paginada
+    let query = db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .limit(limit)
+      .offset(offset);
+
+    if (q) {
+      query = query.where(
+        sql`${users.name} ILIKE ${'%' + q + '%'} OR ${users.email} ILIKE ${'%' + q + '%'}`
+      );
+    }
+
+    const rows = await query;
+
+    // header para o frontend
+    c.header('X-Total-Count', String(total));
+    c.header('X-Total-Pages', String(totalPages));
+    c.header('X-Current-Page', String(page));
 
     return c.json(rows);
   } catch (err) {
@@ -33,6 +59,8 @@ usersRouter.get('/', requireRole('admin'), async (c) => {
     return c.json({ error: 'Falha ao buscar usuários' }, 500);
   }
 });
+
+
 
 /* ======================
    CRIAR (admin)
@@ -99,4 +127,5 @@ usersRouter.delete('/:id', requireRole('admin'), async (c) => {
     return c.json({ error: 'Falha ao excluir usuário' }, 500);
   }
 });
+
 export default usersRouter;

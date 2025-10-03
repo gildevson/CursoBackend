@@ -19,50 +19,69 @@ export const auth = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 /* ====================== */
 /*     REGISTRO / LOGIN   */
 /* ====================== */
-
 auth.post("/register", async (c) => {
   try {
     const db = c.var.db;
     const body = await c.req.json();
+
     const name = String(body.name ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
+    const roleName = String(body.role ?? "usuario").toLowerCase(); // 👈 vem do frontend
 
     if (!name || !email || !password) {
       return c.json({ message: "Dados inválidos. Informe nome, e-mail e senha." }, 400);
     }
 
-    const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    const [exists] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
     if (exists) return c.json({ message: "E-mail já cadastrado." }, 409);
 
+    // 🔐 gera hash
     const hash = await bcrypt.hash(password, 10);
     await db.insert(users).values({ name, email, passwordHash: hash });
 
+    // 🔎 pega usuário criado
     const [created] = await db
       .select({ id: users.id, name: users.name, email: users.email })
       .from(users)
       .where(eq(users.email, email))
       .limit(1);
+
     if (!created) return c.json({ message: "Falha ao persistir cadastro." }, 500);
 
-    const [roleUser] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "usuario")).limit(1);
-    if (roleUser) await db.insert(userRoles).values({ userId: created.id, roleId: roleUser.id });
+    // 🔎 pega role pelo nome ("admin" ou "usuario")
+    const [role] = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.name, roleName))
+      .limit(1);
 
+    if (!role) return c.json({ message: "Role inválida." }, 400);
+
+    // 🔗 vincula usuário à role escolhida
+    await db.insert(userRoles).values({ userId: created.id, roleId: role.id });
+
+    // 🔑 gera token já com role
     const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
     let token: string | null = null;
-    if (JWT) token = await signJwt({ sub: created.id, email: created.email, name: created.name, roles: ["usuario"] }, JWT);
+    if (JWT)
+      token = await signJwt(
+        { sub: created.id, email: created.email, name: created.name, roles: [roleName] },
+        JWT
+      );
 
-    c.header("Location", `/users/${created.id}`);
     return c.json({ message: "Cadastro realizado com sucesso.", user: created, token }, 201);
   } catch (err: any) {
-    const msg = String(err?.message ?? "").toLowerCase();
-    if (msg.includes("unique") || msg.includes("constraint")) {
-      return c.json({ message: "E-mail já cadastrado." }, 409);
-    }
     console.error("register error:", err);
     return c.json({ message: "Erro interno ao cadastrar." }, 500);
   }
 });
+
 
 auth.post("/login", async (c) => {
   try {

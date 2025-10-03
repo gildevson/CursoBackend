@@ -1393,13 +1393,13 @@ var require_dayjs_min = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-bn0N0q/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Fu6wCy/middleware-loader.entry.ts
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
 
-// .wrangler/tmp/bundle-bn0N0q/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Fu6wCy/middleware-insertion-facade.js
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -33256,6 +33256,7 @@ auth.post("/register", async (c) => {
     const name = String(body.name ?? "").trim();
     const email3 = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
+    const roleName = String(body.role ?? "usuario").toLowerCase();
     if (!name || !email3 || !password) {
       return c.json({ message: "Dados inv\xE1lidos. Informe nome, e-mail e senha." }, 400);
     }
@@ -33265,18 +33266,18 @@ auth.post("/register", async (c) => {
     await db.insert(users).values({ name, email: email3, passwordHash: hash3 });
     const [created] = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.email, email3)).limit(1);
     if (!created) return c.json({ message: "Falha ao persistir cadastro." }, 500);
-    const [roleUser] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "usuario")).limit(1);
-    if (roleUser) await db.insert(userRoles).values({ userId: created.id, roleId: roleUser.id });
+    const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, roleName)).limit(1);
+    if (!role) return c.json({ message: "Role inv\xE1lida." }, 400);
+    await db.insert(userRoles).values({ userId: created.id, roleId: role.id });
     const JWT = c.env?.JWT_SECRET ?? process.env.JWT_SECRET;
     let token = null;
-    if (JWT) token = await signJwt({ sub: created.id, email: created.email, name: created.name, roles: ["usuario"] }, JWT);
-    c.header("Location", `/users/${created.id}`);
+    if (JWT)
+      token = await signJwt(
+        { sub: created.id, email: created.email, name: created.name, roles: [roleName] },
+        JWT
+      );
     return c.json({ message: "Cadastro realizado com sucesso.", user: created, token }, 201);
   } catch (err) {
-    const msg = String(err?.message ?? "").toLowerCase();
-    if (msg.includes("unique") || msg.includes("constraint")) {
-      return c.json({ message: "E-mail j\xE1 cadastrado." }, 409);
-    }
     console.error("register error:", err);
     return c.json({ message: "Erro interno ao cadastrar." }, 500);
   }
@@ -33444,8 +33445,23 @@ usersRouter.get("/", requireRole("admin"), async (c) => {
   try {
     const db = c.var.db;
     const q = (c.req.query("q") ?? "").trim();
-    const query = db.select({ id: users.id, name: users.name, email: users.email }).from(users);
-    const rows = q ? await query.where(like(users.name, `%${q}%`)) : await query;
+    const rawPage = parseInt(c.req.query("page") ?? "1", 10);
+    const limit = parseInt(c.req.query("limit") ?? "12", 10);
+    const totalResult = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(users);
+    const total = totalResult[0]?.count ?? 0;
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const page = Math.min(Math.max(rawPage, 1), totalPages);
+    const offset = (page - 1) * limit;
+    let query = db.select({ id: users.id, name: users.name, email: users.email }).from(users).limit(limit).offset(offset);
+    if (q) {
+      query = query.where(
+        sql`${users.name} ILIKE ${"%" + q + "%"} OR ${users.email} ILIKE ${"%" + q + "%"}`
+      );
+    }
+    const rows = await query;
+    c.header("X-Total-Count", String(total));
+    c.header("X-Total-Pages", String(totalPages));
+    c.header("X-Current-Page", String(page));
     return c.json(rows);
   } catch (err) {
     console.error("Erro ao listar usu\xE1rios:", err);
@@ -33475,6 +33491,10 @@ usersRouter.delete("/:id", requireRole("admin"), async (c) => {
   try {
     const db = c.var.db;
     const id = c.req.param("id");
+    const currentUserId = c.var.userId;
+    if (id === currentUserId) {
+      return c.json({ error: "Voc\xEA n\xE3o pode excluir a si mesmo." }, 403);
+    }
     const deleted = await db.delete(users).where(eq(users.id, id));
     if (deleted.rowCount === 0) {
       return c.json({ error: "Usu\xE1rio n\xE3o encontrado" }, 404);
@@ -33650,7 +33670,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-bn0N0q/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Fu6wCy/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -33686,7 +33706,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-bn0N0q/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Fu6wCy/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
