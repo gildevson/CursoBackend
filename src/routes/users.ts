@@ -9,46 +9,54 @@ import type { Env, CtxVars } from '../lib/types';
 export const usersRouter = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
 // 🔒 todas exigem login
-usersRouter.use('*', requireAuth());/*/* ======================
-   LISTAR (admin) com paginação segura
+usersRouter.use('*', requireAuth());
+
+/* ======================
+   LISTAR (admin) com paginação e filtro seguros
 ====================== */
 usersRouter.get('/', requireRole('admin'), async (c) => {
   try {
     const db = c.var.db;
     const q = (c.req.query('q') ?? '').trim();
 
-    // paginação segura
+    // 🔹 paginação
     const rawPage = parseInt(c.req.query('page') ?? '1', 10);
-    const limit = parseInt(c.req.query('limit') ?? '12', 10);
+    const limit = parseInt(c.req.query('limit') ?? '10', 10);
 
-    // total de registros
+    // 🔹 filtro de busca
+    const where = q
+      ? sql`${users.name} ILIKE ${'%' + q + '%'} OR ${users.email} ILIKE ${'%' + q + '%'}`
+      : undefined;
+
+    // 🔹 total de registros (considerando o filtro)
     const totalResult = await db
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(users);
+      .from(users)
+      .where(where);
 
     const total = totalResult[0]?.count ?? 0;
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    // força o page a ficar dentro do intervalo [1, totalPages]
+    // 🔹 força página dentro do limite
     const page = Math.min(Math.max(rawPage, 1), totalPages);
     const offset = (page - 1) * limit;
 
-    // consulta paginada
+    // 🔹 busca paginada
     let query = db
-      .select({ id: users.id, name: users.name, email: users.email })
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      })
       .from(users)
       .limit(limit)
       .offset(offset);
 
-    if (q) {
-      query = query.where(
-        sql`${users.name} ILIKE ${'%' + q + '%'} OR ${users.email} ILIKE ${'%' + q + '%'}`
-      );
-    }
+    if (where) query = query.where(where);
 
     const rows = await query;
 
-    // header para o frontend
+    // 🔹 headers pro frontend
     c.header('X-Total-Count', String(total));
     c.header('X-Total-Pages', String(totalPages));
     c.header('X-Current-Page', String(page));
@@ -59,7 +67,6 @@ usersRouter.get('/', requireRole('admin'), async (c) => {
     return c.json({ error: 'Falha ao buscar usuários' }, 500);
   }
 });
-
 
 
 /* ======================
@@ -127,5 +134,83 @@ usersRouter.delete('/:id', requireRole('admin'), async (c) => {
     return c.json({ error: 'Falha ao excluir usuário' }, 500);
   }
 });
+
+
+/* ======================
+   ATUALIZAR (admin ou próprio usuário)
+====================== */
+usersRouter.put('/:id', requireAuth(), async (c) => {
+  try {
+    const db = c.var.db;
+    const id = c.req.param('id');
+    const currentUserId = c.var.userId;
+    const { name, email, password } = await c.req.json<{
+      name?: string;
+      email?: string;
+      password?: string;
+    }>();
+
+    // 🚫 só admin ou o próprio usuário pode editar
+    const role = c.var.role;
+    if (id !== currentUserId && role !== 'admin') {
+      return c.json({ error: 'Sem permissão para editar este usuário.' }, 403);
+    }
+
+    // prepara os campos a atualizar
+    const dataToUpdate: Record<string, any> = {};
+    if (name) dataToUpdate.name = name;
+    if (email) dataToUpdate.email = email.toLowerCase();
+    if (password) dataToUpdate.passwordHash = await bcrypt.hash(password, 10);
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      return c.json({ error: 'Nenhum campo para atualizar.' }, 400);
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(dataToUpdate)
+      .where(eq(users.id, id))
+      .returning({ id: users.id, name: users.name, email: users.email });
+
+    if (!updated) return c.json({ error: 'Usuário não encontrado.' }, 404);
+
+    return c.json(updated);
+  } catch (err) {
+    console.error('Erro ao atualizar usuário:', err);
+    return c.json({ error: 'Falha ao atualizar usuário' }, 500);
+  }
+});
+
+
+/* ======================
+   OBTER UM USUÁRIO POR ID
+====================== */
+usersRouter.get('/:id', requireAuth(), async (c) => {
+  try {
+    const db = c.var.db;
+    const id = c.req.param('id');
+
+    const [user] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+
+    return c.json(user);
+  } catch (err) {
+    console.error('Erro ao buscar usuário por ID:', err);
+    return c.json({ error: 'Falha ao buscar usuário' }, 500);
+  }
+});
+
+
 
 export default usersRouter;

@@ -1393,13 +1393,13 @@ var require_dayjs_min = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-Fu6wCy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-pQo35v/middleware-loader.entry.ts
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
 
-// .wrangler/tmp/bundle-Fu6wCy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-pQo35v/middleware-insertion-facade.js
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -12393,6 +12393,13 @@ init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
+function primaryKey(...config3) {
+  if (config3[0].columns) {
+    return new PrimaryKeyBuilder(config3[0].columns, config3[0].name);
+  }
+  return new PrimaryKeyBuilder(config3);
+}
+__name(primaryKey, "primaryKey");
 var PrimaryKeyBuilder = class {
   static {
     __name(this, "PrimaryKeyBuilder");
@@ -12838,19 +12845,19 @@ function extractTablesRelationalConfig(schema, configHelpers) {
       const relations2 = value.config(
         configHelpers(value.table)
       );
-      let primaryKey;
+      let primaryKey2;
       for (const [relationName, relation] of Object.entries(relations2)) {
         if (tableName) {
           const tableConfig = tablesConfig[tableName];
           tableConfig.relations[relationName] = relation;
-          if (primaryKey) {
-            tableConfig.primaryKey.push(...primaryKey);
+          if (primaryKey2) {
+            tableConfig.primaryKey.push(...primaryKey2);
           }
         } else {
           if (!(dbName in relationsBuffer)) {
             relationsBuffer[dbName] = {
               relations: {},
-              primaryKey
+              primaryKey: primaryKey2
             };
           }
           relationsBuffer[dbName].relations[relationName] = relation;
@@ -31589,10 +31596,16 @@ init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-var userRoles = pgTable("user_roles", {
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" })
-});
+var userRoles = pgTable(
+  "user_roles",
+  {
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" })
+  },
+  (table3) => ({
+    pk: primaryKey({ columns: [table3.userId, table3.roleId] })
+  })
+);
 
 // src/db/tables/passwordResetTokens.ts
 init_modules_watch_stub();
@@ -33413,26 +33426,31 @@ init_performance2();
 var requireAuth2 = /* @__PURE__ */ __name(() => {
   return async (c, next) => {
     const authHeader = c.req.header("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
-    if (!token) {
-      return c.json({ message: "Token n\xE3o informado" }, 401);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return c.json({ error: "Token ausente ou inv\xE1lido" }, 401);
     }
+    const token = authHeader.split(" ")[1];
     try {
-      const JWT = c.env.JWT_SECRET;
-      const decoded = await verifyJwt(token, JWT);
-      c.set("auth", decoded);
+      const decoded = await verifyJwt(token, c.env.JWT_SECRET);
+      if (!decoded?.sub) {
+        return c.json({ error: "Token inv\xE1lido" }, 401);
+      }
+      c.set("userId", decoded.sub);
+      c.set("role", decoded.roles?.[0] || "usuario");
+      c.set("roles", decoded.roles || []);
       await next();
     } catch (err) {
-      console.error("Erro ao verificar token:", err);
-      return c.json({ message: "Token inv\xE1lido" }, 401);
+      console.error("Erro no requireAuth:", err);
+      return c.json({ error: "Token inv\xE1lido ou expirado" }, 401);
     }
   };
 }, "requireAuth");
-var requireRole = /* @__PURE__ */ __name((role) => {
+var requireRole = /* @__PURE__ */ __name((rolesPermitidas) => {
   return async (c, next) => {
-    const auth2 = c.get("auth");
-    if (!auth2?.roles?.includes(role)) {
-      return c.json({ message: "Acesso negado" }, 403);
+    const userRoles2 = c.get("roles") || [];
+    const permitido = Array.isArray(rolesPermitidas) ? rolesPermitidas.some((r) => userRoles2.includes(r)) : userRoles2.includes(rolesPermitidas);
+    if (!permitido) {
+      return c.json({ error: "Acesso negado" }, 403);
     }
     await next();
   };
@@ -33446,18 +33464,19 @@ usersRouter.get("/", requireRole("admin"), async (c) => {
     const db = c.var.db;
     const q = (c.req.query("q") ?? "").trim();
     const rawPage = parseInt(c.req.query("page") ?? "1", 10);
-    const limit = parseInt(c.req.query("limit") ?? "12", 10);
-    const totalResult = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(users);
+    const limit = parseInt(c.req.query("limit") ?? "10", 10);
+    const where = q ? sql`${users.name} ILIKE ${"%" + q + "%"} OR ${users.email} ILIKE ${"%" + q + "%"}` : void 0;
+    const totalResult = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(users).where(where);
     const total = totalResult[0]?.count ?? 0;
     const totalPages = Math.max(Math.ceil(total / limit), 1);
     const page = Math.min(Math.max(rawPage, 1), totalPages);
     const offset = (page - 1) * limit;
-    let query = db.select({ id: users.id, name: users.name, email: users.email }).from(users).limit(limit).offset(offset);
-    if (q) {
-      query = query.where(
-        sql`${users.name} ILIKE ${"%" + q + "%"} OR ${users.email} ILIKE ${"%" + q + "%"}`
-      );
-    }
+    let query = db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email
+    }).from(users).limit(limit).offset(offset);
+    if (where) query = query.where(where);
     const rows = await query;
     c.header("X-Total-Count", String(total));
     c.header("X-Total-Pages", String(totalPages));
@@ -33503,6 +33522,49 @@ usersRouter.delete("/:id", requireRole("admin"), async (c) => {
   } catch (err) {
     console.error("Erro ao excluir usu\xE1rio:", err);
     return c.json({ error: "Falha ao excluir usu\xE1rio" }, 500);
+  }
+});
+usersRouter.put("/:id", requireAuth2(), async (c) => {
+  try {
+    const db = c.var.db;
+    const id = c.req.param("id");
+    const currentUserId = c.var.userId;
+    const { name, email: email3, password } = await c.req.json();
+    const role = c.var.role;
+    if (id !== currentUserId && role !== "admin") {
+      return c.json({ error: "Sem permiss\xE3o para editar este usu\xE1rio." }, 403);
+    }
+    const dataToUpdate = {};
+    if (name) dataToUpdate.name = name;
+    if (email3) dataToUpdate.email = email3.toLowerCase();
+    if (password) dataToUpdate.passwordHash = await bcryptjs_default.hash(password, 10);
+    if (Object.keys(dataToUpdate).length === 0) {
+      return c.json({ error: "Nenhum campo para atualizar." }, 400);
+    }
+    const [updated] = await db.update(users).set(dataToUpdate).where(eq(users.id, id)).returning({ id: users.id, name: users.name, email: users.email });
+    if (!updated) return c.json({ error: "Usu\xE1rio n\xE3o encontrado." }, 404);
+    return c.json(updated);
+  } catch (err) {
+    console.error("Erro ao atualizar usu\xE1rio:", err);
+    return c.json({ error: "Falha ao atualizar usu\xE1rio" }, 500);
+  }
+});
+usersRouter.get("/:id", requireAuth2(), async (c) => {
+  try {
+    const db = c.var.db;
+    const id = c.req.param("id");
+    const [user] = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email
+    }).from(users).where(eq(users.id, id)).limit(1);
+    if (!user) {
+      return c.json({ error: "Usu\xE1rio n\xE3o encontrado" }, 404);
+    }
+    return c.json(user);
+  } catch (err) {
+    console.error("Erro ao buscar usu\xE1rio por ID:", err);
+    return c.json({ error: "Falha ao buscar usu\xE1rio" }, 500);
   }
 });
 
@@ -33606,7 +33668,14 @@ app.use(
     }, "origin"),
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    exposeHeaders: ["Content-Type", "Content-Length"],
+    exposeHeaders: [
+      "Content-Type",
+      "Content-Length",
+      // 👇 estes aqui são essenciais para a paginação
+      "X-Total-Count",
+      "X-Total-Pages",
+      "X-Current-Page"
+    ],
     credentials: true,
     maxAge: 86400
   })
@@ -33670,7 +33739,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Fu6wCy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-pQo35v/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -33706,7 +33775,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Fu6wCy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-pQo35v/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

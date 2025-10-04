@@ -13,6 +13,7 @@ import dbping from './routes/dbping';
 const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
 // Middleware de CORS
+// Middleware de CORS
 app.use(
   '*',
   cors({
@@ -27,11 +28,19 @@ app.use(
     },
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposeHeaders: ['Content-Type', 'Content-Length'],
+    exposeHeaders: [
+      'Content-Type',
+      'Content-Length',
+      // 👇 estes aqui são essenciais para a paginação
+      'X-Total-Count',
+      'X-Total-Pages',
+      'X-Current-Page',
+    ],
     credentials: true,
     maxAge: 86400,
   })
 );
+
 
 // Injeta db na req
 app.use('*', withDb);
