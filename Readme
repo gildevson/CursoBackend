@@ -1,0 +1,63 @@
+Se caso você mudar ou acrescentar uma tabela adicionar a mudança
+
+Nesse caso, rode:
+
+npx drizzle-kit generate
+
+
+(gera o arquivo de migração baseado nas mudanças nas tabelas)
+
+E depois:
+
+npx drizzle-kit push
+
+
+
+PS C:\PastaProjetos\ProjetoCursoSistema\CursoBackend> npx drizzle-kit generate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\PastaProjetos\ProjetoCursoSistema\CursoBackend\drizzle.config.ts'
+7 tables
+clientes 6 columns 1 indexes 0 fks
+password_reset_tokens 6 columns 0 indexes 1 fks
+permissions 2 columns 0 indexes 0 fks
+role_perms 2 columns 0 indexes 2 fks
+roles 2 columns 0 indexes 0 fks
+user_roles 2 columns 0 indexes 2 fks
+users 7 columns 0 indexes 0 fks
+
+No schema changes, nothing to migrate 😴
+PS C:\PastaProjetos\ProjetoCursoSistema\CursoBackend> npx drizzle-kit push
+>>
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\PastaProjetos\ProjetoCursoSistema\CursoBackend\drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
++ clientes table will be created    
+--- all table conflicts resolved ---
+
+ Warning  Found data-loss statements:
+· You're about to delete role column in users table with 17 items
+
+THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+
+Do you still want to push changes?
+[✓] Changes applied
+PS C:\PastaProjetos\ProjetoCursoSistema\CursoBackend> npx drizzle-kit pull
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\PastaProjetos\ProjetoCursoSistema\CursoBackend\drizzle.config.ts'
+Pulling from ['public'] list of schemas
+
+Using 'pg' driver for database querying
+[✓] 7  tables fetched
+[✓] 27 columns fetched
+[✓] 0  enums fetched
+[✓] 1  indexes fetched
+[✓] 5  foreign keys fetched
+[✓] 0  policies fetched
+[✓] 0  check constraints fetched
+[✓] 0  views fetched
+
+[i] No SQL generated, you already have migrations in project
+[✓] Your schema file is ready ➜ drizzle\schema.ts 🚀
+[✓] Your relations file is ready ➜ drizzle\relations.ts 🚀
+PS C:\PastaProjetos\ProjetoCursoSistema\CursoBackend> 

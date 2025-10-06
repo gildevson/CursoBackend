@@ -1,7 +1,7 @@
 // db/tables/empresas.ts
 import {pgTable, bigserial, varchar, boolean, timestamp, uniqueIndex} from "drizzle-orm/pg-core";
 
-export const empresas = pgTable("empresas", {
+export const clientes = pgTable("clientes", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   nome: varchar("nome", { length: 255 }).notNull(),
   cnpj: varchar("cnpj", { length: 20 }),                 // opcional
