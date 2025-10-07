@@ -1,6 +1,6 @@
 import {
   pgTable,
-  bigserial,
+  uuid,
   varchar,
   boolean,
   timestamp,
@@ -10,9 +10,9 @@ import {
 export const clientes = pgTable(
   'clientes',
   {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    id: uuid('id').defaultRandom().primaryKey(), // 🔹 gera UUID automático
     nome: varchar('nome', { length: 255 }).notNull(),
-    cnpjCpf: varchar('cnpj', { length: 20 }), // campo opcional
+    cnpjCpf: varchar('cnpj', { length: 20 }), // opcional
     emailContato: varchar('email_contato', { length: 255 }),
     ruaEndereco: varchar('rua_endereco', { length: 255 }),
     numeroEndereco: varchar('numero_endereco', { length: 20 }),

@@ -1,4 +1,4 @@
-import { pgTable, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, bigserial, varchar, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, varchar, primaryKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -31,12 +31,10 @@ export const users = pgTable("users", {
 ]);
 
 export const clientes = pgTable("clientes", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	id: uuid().defaultRandom().primaryKey().notNull(),
 	nome: varchar({ length: 255 }).notNull(),
 	cnpj: varchar({ length: 20 }),
 	emailContato: varchar("email_contato", { length: 255 }),
-	ativo: boolean().default(true).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	ruaEndereco: varchar("rua_endereco", { length: 255 }),
 	numeroEndereco: varchar("numero_endereco", { length: 20 }),
 	complementoEndereco: varchar("complemento_endereco", { length: 100 }),
@@ -45,6 +43,8 @@ export const clientes = pgTable("clientes", {
 	estadoEndereco: varchar("estado_endereco", { length: 100 }),
 	cepEndereco: varchar("cep_endereco", { length: 20 }),
 	telefone: varchar({ length: 20 }),
+	ativo: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	uniqueIndex("ux_clientes_cnpjcpf").using("btree", table.cnpj.asc().nullsLast().op("text_ops")),
 ]);

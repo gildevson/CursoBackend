@@ -10,6 +10,9 @@ import usersRouter from './routes/users';
 import { passwordResetRoutes } from './routes/passwordReset';
 import dbping from './routes/dbping';
 
+import clientesListar from "./routes/clientesListar";
+import clientesCriar from "./routes/clientesCriar";
+
 const app = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
 // Middleware de CORS
@@ -54,6 +57,10 @@ app.route('/dbping', dbping);
 app.route('/auth', auth);                  // -> /auth/login
 app.route('/users', usersRouter);
 app.route('/password-reset', passwordResetRoutes); // -> /password-reset/request e /password-reset/confirm
+app.route("/clientes", clientesListar);
+app.route("/clientes", clientesCriar);
+
+
 
 // 404
 app.notFound((c) => c.json({ message: 'Rota não encontrada' }, 404));
