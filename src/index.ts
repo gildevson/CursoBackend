@@ -6,7 +6,7 @@ import { withDb } from './lib/db';
 
 // Rotas
 import { auth } from './routes/auth';
-import { usersRouter } from './routes/users';
+import usersRouter from './routes/users';
 import { passwordResetRoutes } from './routes/passwordReset';
 import dbping from './routes/dbping';
 

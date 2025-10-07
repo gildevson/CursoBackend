@@ -37,8 +37,16 @@ export const clientes = pgTable("clientes", {
 	emailContato: varchar("email_contato", { length: 255 }),
 	ativo: boolean().default(true).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	ruaEndereco: varchar("rua_endereco", { length: 255 }),
+	numeroEndereco: varchar("numero_endereco", { length: 20 }),
+	complementoEndereco: varchar("complemento_endereco", { length: 100 }),
+	bairroEndereco: varchar("bairro_endereco", { length: 100 }),
+	cidadeEndereco: varchar("cidade_endereco", { length: 100 }),
+	estadoEndereco: varchar("estado_endereco", { length: 100 }),
+	cepEndereco: varchar("cep_endereco", { length: 20 }),
+	telefone: varchar({ length: 20 }),
 }, (table) => [
-	uniqueIndex("ux_empresas_cnpj").using("btree", table.cnpj.asc().nullsLast().op("text_ops")),
+	uniqueIndex("ux_clientes_cnpjcpf").using("btree", table.cnpj.asc().nullsLast().op("text_ops")),
 ]);
 
 export const roles = pgTable("roles", {

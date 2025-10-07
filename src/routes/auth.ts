@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import dayjs from "dayjs";
 import { z } from "zod";
-
 import { users } from "../db/tables/users";
 import { roles } from "../db/tables/roles";
 import { userRoles } from "../db/tables/userRoles";

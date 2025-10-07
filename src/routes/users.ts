@@ -12,8 +12,8 @@ export const usersRouter = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 usersRouter.use('*', requireAuth());
 
 /* ======================
-   LISTAR (admin) com paginação e filtro seguros
-====================== */
+   LISTAR (admin) com paginação e filtro seguros 
+   ====================== */
 usersRouter.get('/', requireRole('admin'), async (c) => {
   try {
     const db = c.var.db;
