@@ -1,3 +1,4 @@
+// src/routes/clientesListar.ts
 import { Hono } from "hono";
 import { requireAuth, requireRole } from "../lib/auth";
 import { listarClientes } from "../controllers/listarClientes";
@@ -7,7 +8,8 @@ const clientesListar = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
 clientesListar.use("*", requireAuth());
 
-clientesListar.get("/", requireRole("admin"), async (c) => {
+// 📋 GET /clientes/listar
+clientesListar.get("/clientes", requireRole("admin"), async (c) => {
   try {
     const db = c.var.db;
     const q = (c.req.query("q") ?? "").trim();

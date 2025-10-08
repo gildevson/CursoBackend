@@ -57,8 +57,9 @@ app.route('/dbping', dbping);
 app.route('/auth', auth);                  // -> /auth/login
 app.route('/users', usersRouter);
 app.route('/password-reset', passwordResetRoutes); // -> /password-reset/request e /password-reset/confirm
-app.route("/clientes", clientesListar);
-app.route("/clientes", clientesCriar);
+app.route("/clientes", clientesListar);  // GET /clientes/listar
+app.route("/clientes", clientesCriar);   // POST /clientes/criar
+
 
 
 
