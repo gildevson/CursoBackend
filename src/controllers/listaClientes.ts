@@ -1,13 +1,13 @@
+// src/controllers/listarClientes.ts
 import { clientes } from "../db/tables/clientes";
-import { and, or, sql } from "drizzle-orm";
+import { or, sql } from "drizzle-orm";
 
-export async function listarClientes(
+export async function listaClientes(
   db: any,
   q: string = "",
   page: number = 1,
   limit: number = 10
 ) {
-  // 🔹 Monta o filtro de busca (case-insensitive)
   const where =
     q && q.trim() !== ""
       ? or(
@@ -16,7 +16,6 @@ export async function listarClientes(
         )
       : undefined;
 
-  // 🔹 Conta o total de registros
   const totalResult = where
     ? await db
         .select({ count: sql<number>`count(*)`.mapWith(Number) })
@@ -30,7 +29,6 @@ export async function listarClientes(
   const totalPages = Math.max(Math.ceil(total / limit), 1);
   const offset = (page - 1) * limit;
 
-  // 🔹 Consulta paginada
   let query = db
     .select({
       id: clientes.id,
@@ -50,7 +48,6 @@ export async function listarClientes(
 
   const rows = await query;
 
-  // 🔹 Retorno estruturado
   return {
     rows,
     total,
