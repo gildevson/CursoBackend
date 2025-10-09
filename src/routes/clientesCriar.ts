@@ -1,15 +1,11 @@
 // src/routes/clientesCriar.ts
 import { Hono } from "hono";
-import { requireAuth, requireRole } from "../lib/auth";
 import { criarCliente } from "../controllers/criarCliente";
 import type { Env, CtxVars } from "../lib/types";
 
 const clientesCriar = new Hono<{ Bindings: Env; Variables: CtxVars }>();
 
-clientesCriar.use("*", requireAuth());
-
-// ➕ POST /clientes/criar
-clientesCriar.post("/criar", requireRole("admin"), async (c) => {
+clientesCriar.post("/criar", async (c) => {
   try {
     const db = c.var.db;
     const body = await c.req.json();

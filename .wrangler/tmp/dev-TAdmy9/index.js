@@ -1393,13 +1393,13 @@ var require_dayjs_min = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-n4Cxgj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-R9rZvY/middleware-loader.entry.ts
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
 
-// .wrangler/tmp/bundle-n4Cxgj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-R9rZvY/middleware-insertion-facade.js
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -33665,18 +33665,18 @@ dbping.get("", async (c) => {
 });
 var dbping_default = dbping;
 
-// src/routes/clientesListar.ts
+// src/routes/clientesListas.ts
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
 
-// src/controllers/listarClientes.ts
+// src/controllers/listaClientes.ts
 init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-async function listarClientes(db, q = "", page = 1, limit = 10) {
+async function listaClientes(db, q = "", page = 1, limit = 10) {
   const where = q && q.trim() !== "" ? or(
     sql`${clientes.nome} ILIKE ${"%" + q + "%"}`,
     sql`${clientes.cnpjCpf} ILIKE ${"%" + q + "%"}`
@@ -33704,28 +33704,33 @@ async function listarClientes(db, q = "", page = 1, limit = 10) {
     page
   };
 }
-__name(listarClientes, "listarClientes");
+__name(listaClientes, "listaClientes");
 
-// src/routes/clientesListar.ts
-var clientesListar = new Hono2();
-clientesListar.use("*", requireAuth2());
-clientesListar.get("/clientes", requireRole("admin"), async (c) => {
+// src/routes/clientesListas.ts
+var clientesListas = new Hono2();
+clientesListas.use("*", requireAuth2());
+clientesListas.get("/", requireRole("admin"), async (c) => {
   try {
     const db = c.var.db;
     const q = (c.req.query("q") ?? "").trim();
     const page = parseInt(c.req.query("page") ?? "1", 10);
     const limit = parseInt(c.req.query("limit") ?? "10", 10);
-    const { rows, total, totalPages } = await listarClientes(db, q, page, limit);
+    const { rows, total, totalPages } = await listaClientes(db, q, page, limit);
     c.header("X-Total-Count", String(total));
     c.header("X-Total-Pages", String(totalPages));
     c.header("X-Current-Page", String(page));
-    return c.json(rows);
+    return c.json({
+      rows,
+      total,
+      totalPages,
+      page
+    });
   } catch (err) {
     console.error("Erro ao listar clientes:", err);
     return c.json({ error: err.message || "Falha ao buscar clientes" }, 500);
   }
 });
-var clientesListar_default = clientesListar;
+var clientesListas_default = clientesListas;
 
 // src/routes/clientesCriar.ts
 init_modules_watch_stub();
@@ -33781,8 +33786,7 @@ __name(criarCliente, "criarCliente");
 
 // src/routes/clientesCriar.ts
 var clientesCriar = new Hono2();
-clientesCriar.use("*", requireAuth2());
-clientesCriar.post("/criar", requireRole("admin"), async (c) => {
+clientesCriar.post("/criar", async (c) => {
   try {
     const db = c.var.db;
     const body = await c.req.json();
@@ -33830,7 +33834,7 @@ app.route("/dbping", dbping_default);
 app.route("/auth", auth);
 app.route("/users", users_default);
 app.route("/password-reset", passwordResetRoutes);
-app.route("/clientes", clientesListar_default);
+app.route("/clientes", clientesListas_default);
 app.route("/clientes", clientesCriar_default);
 app.notFound((c) => c.json({ message: "Rota n\xE3o encontrada" }, 404));
 var src_default = app;
@@ -33884,7 +33888,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-n4Cxgj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-R9rZvY/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -33920,7 +33924,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-n4Cxgj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-R9rZvY/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
